@@ -3,7 +3,7 @@
 Software crashing -> redundance? Watchdogtimers, multiple treads, if software crashes lock elevator in place and restart? Robust software/hardware
 
 Communication failing:
-Back-up plan ? Serve last order(last recived que order?) and stop? Work independently(Causes a problem when you have multiple elevators and 1 working independently)
+Back-up plan? Serve last order(last recived que order?) and stop? Work independently(Causes a problem when you have multiple elevators and 1 working independently)
 
 User being trolls:
 
