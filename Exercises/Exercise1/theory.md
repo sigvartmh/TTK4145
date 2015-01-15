@@ -50,7 +50,7 @@ Green threads are threads that are scheduled by a virtual machine (VM) instead o
 Coroutines are computer program components that generalize subroutines for nonpreemptive multitasking, by allowing multiple entry points for suspending and resuming execution at certain locations.
 
 Which one of :...
-The pthread_create() function is used to create a new thread same goes for threading.Thread() (Python) and go (Go)
+The pthread_create() function is used to create a new thread same goes for threading.Thread() (Python) but go[goroutins] (Go) creates green threads.
 
 The python Global Interpeter Lock(GIL) influences the way a python Thread behaves in the CPython interpreter to assure that only one thread executes Python bytecode at a time.
 
