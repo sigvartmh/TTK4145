@@ -14,6 +14,12 @@ const (
 
 func udpSend(done chan bool){
 	saddr, err := net.ResolveUDPAddr("udp4", net.JoinHostPort(servAddr, udpPort))
+	
+	if err != nil{
+		fmt.Println("Failed to resolve address for: " + port)
+
+	}
+
 	conn, err := net.DialUDP("udp", nil, saddr)
 
 	if err != nil {
