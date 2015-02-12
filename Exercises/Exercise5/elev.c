@@ -68,26 +68,6 @@ void elev_set_motor_direction(elev_motor_direction_t dirn) {
     }
 }
 
-void elev_set_speed(int speed){
-    static int last_speed=0;
-
-    if(speed > 0){
-        io_clear_bit(MOTORDIR);
-    }
-    else if(speed > 0){
-        io_set_bit(MOTORDIR);
-    }
-
-    if(last_speed > 0){
-        io_clear_bit(MOTORDIR);
-    }
-    else if(last_speed > 0){
-        io_set_bit(MOTORDIR);
-    }
-
-    io_write_analog(MOTOR, 2048 + 4*abs(speed));
-}
-
 void elev_set_door_open_lamp(int value) {
     if (value)
         io_set_bit(LIGHT_DOOR_OPEN);
