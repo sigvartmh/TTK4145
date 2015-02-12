@@ -26,6 +26,7 @@ const (
 
 func Init() int {
     return int(C.elev_init())
+    go updateFloorLights()
 }
 
 func setMotorDir(dir elev_motor_direction_t) { // made private
@@ -36,8 +37,8 @@ func GetFloorSensor() int{
     return int(C.elev_get_floor_sensor_signal())
 }
 
-func GetButtonSignal(button elev_button_type_t, floor int) bool {
-    return bool(C.elev_get_button_signal(C.elev_button_type_t(button), C.int(floor)))
+func GetButtonSignal(button elev_button_type_t, floor int) int {
+    return int(C.elev_get_button_signal(C.elev_button_type_t(button), C.int(floor)))
 }
 
 func GetStopSignal() int {
@@ -77,7 +78,7 @@ func GoToFloor(desiredFloor int) {
     }
 }
 
-func updateFloorLights(){ // Run as go routine from init
+func updateFloorLights(){ // Run as go routine from Init()
     currentFloor := GetFloorSensor()
     // if currentFloor
     // setFloorIndicator(currentFloor)
