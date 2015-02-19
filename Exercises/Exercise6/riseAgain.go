@@ -12,7 +12,7 @@ import(
 
 var addr string = "localhost"
 var bAddr string = "129.241.187.255"
-var port string = ":200xx"
+var port string = ":20017"
 
 func checkErr(err error){
 	if err != nil {
@@ -22,7 +22,7 @@ func checkErr(err error){
 }
 
 func spawnProcess(){
-	cmd := exec.Command("terminal", "-x", "go", "run", "riseAgain.go")
+	cmd := exec.Command("gnome-terminal", "-e", "go", "run", "riseAgain.go")
 	out, err := cmd.Output()
 	checkErr(err)
 	fmt.Println(string(out))
