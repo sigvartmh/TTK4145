@@ -22,7 +22,7 @@ func checkErr(err error){
 }
 
 func spawnProcess(){
-	cmd := exec.Command("gnome-terminal", "-e", "go", "run", "riseAgain.go")
+	cmd := exec.Command("gnome-terminal", "-e", "./test.sh")
 	out, err := cmd.Output()
 	checkErr(err)
 	fmt.Println(string(out))
@@ -39,7 +39,7 @@ func getCount(udpMsg string) int{
 
 func slaveProcess(conn *net.UDPConn, masterAlive bool, count *int) bool{
 	for(masterAlive){
-		conn.SetReadDeadline(time.Now().Add(time.Second))
+		conn.SetReadDeadline(time.Now().Add(time.Second*2)) //takes some time to open terminal
 		data := make([]byte, 16)
 		length, _, err := conn.ReadFromUDP(data[0:])
 		if err != nil {
