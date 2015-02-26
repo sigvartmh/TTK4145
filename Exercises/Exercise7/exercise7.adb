@@ -23,7 +23,7 @@ procedure exercise7 is
             ------------------------------------------
             if Finished'Count=N-1 then
                 Finished_Gate_Open:= true;
-                Should_Commit := true;
+                Should_Commit := not Aborted;
             end if;
             if Finished'Count=0 then
                 Finished_Gate_Open:=false;
