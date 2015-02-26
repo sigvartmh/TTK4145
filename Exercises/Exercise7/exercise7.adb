@@ -21,6 +21,14 @@ procedure exercise7 is
             ------------------------------------------
             -- PART 3: Complete the exit protocol here
             ------------------------------------------
+			if Finished'Count = N-1 then
+				Finished_Gate_OPEN := true;
+				sHOULD_CommIT := not Aborted;
+			end if;
+			if Finished'Count = 0 then
+				Finished_Gate_OPEN := false;
+				Aborted := false;
+			end if;
         end Finished;
 
         procedure Signal_Abort is
@@ -40,10 +48,19 @@ procedure exercise7 is
     
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
+	Num 	   : Integer;
     begin
         -------------------------------------------
         -- PART 1: Create the transaction work here
         -------------------------------------------
+		if Random(Gen)>Error_Rate then
+			delay Duration(4.9*Random(gen));
+			Num:=x+10;
+		else
+			delay Duration(0.3*Random(gen));
+			raise Count_Failed;
+		end if;
+		return Num;
     end Unreliable_Slow_Add;
 
 
@@ -64,7 +81,14 @@ procedure exercise7 is
             ---------------------------------------
             -- PART 2: Do the transaction work here             
             ---------------------------------------
-            
+	     	begin
+				Num:=UnReLiAbLe_SlOw_AdD(prev);
+			exception
+				when Count_Failed =>
+					Manager.Signal_Abort;
+			end;
+			Manager.Finished;
+			
             if Manager.Commit = True then
                 Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
             else
@@ -74,6 +98,7 @@ procedure exercise7 is
                 -------------------------------------------
                 -- PART 2: Roll back to previous value here
                 -------------------------------------------
+				Num := Prev;
             end if;
 
             Prev := Num;
