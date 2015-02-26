@@ -48,7 +48,7 @@ procedure exercise7 is
     
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
-    base : integer := 10;
+    Num : integer := 10;
     begin
         -------------------------------------------
         -- PART 1: Create the transaction work here
@@ -56,12 +56,12 @@ procedure exercise7 is
         case Random(Gen)>Error_Rate is
             when true => 
                 delay Duration(Random(Gen)*4.4);
-                base:=x+10;
+                Num:=x+10;
             when false =>
                 delay Duration(Random(gen)*0.4);
                 raise Count_Failed;
          end case;
-         return base;
+         return Num;
     end Unreliable_Slow_Add;
 
 
