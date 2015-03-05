@@ -8,7 +8,7 @@ procedure exercise8 is
 
     protected type Transaction_Manager (N : Positive) is
         entry Finished;
-        function Commit return Boolean;
+        entry Wait_Until_Aborted;
         procedure Signal_Abort;
     private
         Finished_Gate_Open  : Boolean := False;
@@ -34,12 +34,12 @@ procedure exercise8 is
         begin
             Aborted := True;
         end Signal_Abort;
-        
+
         entry Wait_Until_Aborted when Aborted is
         begin
             if Wait_Until_Aborted'Count=0 then
-                Aborted = false;
-            end if
+                Aborted := false;
+            end if;
         end Wait_Until_Aborted;
         
     end Transaction_Manager;
@@ -86,7 +86,7 @@ procedure exercise8 is
             select
                 Manager.Wait_Until_Aborted;
                 Num:=Prev+5;
-                Put_Line("Worker " &Integer'Image(Initial) & "forward error recovery from" &IntegerImage(Prev) & "  to" & Integer'Image(Num));
+                Put_Line("Worker " &Integer'Image(Initial) & "forward error recovery from" &Integer'Image(Prev) & "  to" & Integer'Image(Num));
             then abort
                 begin
                     Num:=Unreliable_Slow_Add(Prev);
