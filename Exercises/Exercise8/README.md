@@ -1,72 +1,50 @@
-Exercise 7 : Backward error recovery
-====================================
+Exercise 8 :
+================
 
-This is the first of a two-part exercise: This time we will look at one way of doing backward error recovery, and next time we will modify this code to use forward error recovery instead. Since we will be needing a rather unique functionality of Ada for our forward error recovery solution, we will be doing both using Ada, to better show the similarities and differences between the two approaches.
+Last time we looked at backward error recovery, where upon error all participants in a transaction reverted to a previous consistent state, and started over. In some situations this behaviour is unacceptable, because an error may happen many times in a row, which means there will be no upper bound on the number of retries required. Instead, we have to compensate for the error by finding a new (but possibly sub-optimal) consistent state for the system. This is known as forward error recovery.
 
-###Logistical:
-[Intro to Ada](http://www.adaic.org/learn/materials/intro)
+Regardless of whether we are using backward or forward error recovery, there may still be participants that are doing work that will never be used, since another participant has already signalled the transaction to be aborted. The Ada language provides a mechanism for notifying tasks asynchronously, so they can be aborted immediately when a certain event triggers. This event can either be a delay, or the condition of a protected object entry becoming true. This mechanism is called "Asynchronous Transfer of Control", or ATC. 
 
-[Ada Reference Manual](http://www.adaic.org/resources/add_content/standards/12rm/html/RM-TOC.html)
-
-Compile using `gnatmake`
-
-The code you are completing can be found [here](/Exercise7/exercise7.adb).
+In our case we will be using an entry in the transaction manager, where the condition becomes true when the transaction has been aborted by any of the participants.
 
 
 ###Desired functionality:
-We are modelling a transaction with three participants, where each performs a calculation that is slow when it works correctly, but fails quickly when it fails. The work from each should not be committed (in this case: printed to the standard output) unless _all_ participants succeed. When any participant fails, the work from all the others will need to be reset, and the transaction has to start over.
+As before, we call `Unreliable_Slow_Add`. If this fails (raises an exception), all participants instead add 5, and commit this value (adding 5 never fails, because of reasons)[.](http://threewordphrase.com/pardonme.htm) When one participant fails, all participants that are not yet done should be aborted immediately.
 
 
-###Part 1: Create the transaction work function
+###Part 1: Select-Then-Abort
 
-The "work" the participants are doing is adding 10 to a number. Unoriginal, perhaps, but we can use random numbers to have it simulate work that either success or fails. We will call this function `Unreliable_Slow_Add`.
+The structure for Asynchronous Transfer of Control is the "Select-then-abort" statement:
 
- - A random number generator `Gen` is defined and seeded for you. Call `Random(Gen)` to get a random number between 0.0 and 1.0. Compare it with the `Error_Rate`, and have the function either perform:
-   - The intended behaviour: Most of the time, the addition takes up to 4-ish seconds. Use `delay Duration(d)` (where d is a floating-point number) to pause execution for d seconds (You can use `Random(Gen)` multiplied with a constant as the value for d). Then, add 10 to `x` and return the value.
-   - The faulty behaviour: The rest of the time, the operation takes significantly less time (say, up to half a second), but raises an exception instead. A `Count_Failed` exception has been defined for you. (Note: Ada uses `raise`, not `throw`)
- 
+    select
+        triggering_alternative   -- eg. X.Entry_Call;
+        -- code that is run when the triggering_alternative has triggered
+        --   (forward ER code goes here)
+    then abort
+        abortable_part
+        -- code that is run when nothing has triggered
+        --   (main functionality)
+    end select;
+    
+The triggering alternative will be an entry call in the `Manager`, which we will call `Wait_Until_Aborted`. It has not been implemented yet (again, trust your future selves to do a competent job). After this trigger happens, compensate for the error by adding 5, and committing that value instead.
 
-###Part 2: Do the transaction work
+Since we know that 1) the triggering alternative occurs simultaneously and asynchronously in all participating tasks, and 2) that we have an exit protocol that requires all participants to show up, we do not need to ask the manager if we should commit: We commit if all show up in the exit protocol (`Manager.Finished;`), or we do forward error recovery if the trigger triggers (As before, we use `Signal_Abort` to notify the manager). Move or remove code to achieve this.
 
-Now that we have the unreliable slow adder, we need to call it, and also catch the exception it throws.
+###Part 2: Create the Wait_Until_Aborted entry
 
- - The variable we are modifying is called `Num`, and its previous value is called `Prev`.
- - The structure for exception handling in Ada is [begin-exception-end](http://en.wikipedia.org/wiki/Exception_handling_syntax#Ada). There is only one exception to catch: `Count_Failed`. When counting fails, we need to tell the transaction manager that everyone has to revert, by using `Manager.Signal_Abort;` (already implemented).
- - Both in case of success and failure, we need to know what happened to the other participants. The exit protocol lies in the `Finished` entry of the transaction manager, but is not yet implemented (We'll get back to this in part 3). Call it, and trust your future selves that it will be implemented properly.
- - We then ask the manager if we should commit the result. If not, we have to revert to the previous value.
+This is the trigger for the asynchronous select-statement. The manager has a boolean `Aborted`, that is set to true by the first participant to call `Signal_Abort`. This entry will be run asynchronously the moment its condition is true (because of its placement in the select-then-abort statement), which means we can use the aforementioned boolean as the entry condition. Remember to reset this value when the last of the participants have passed through the entry.
 
- 
-###Part 3: Finish the Manager exit protocol
+###Part 3: Modify the Finished entry
 
-The exit protocol requires that all participants show up, and all votes are counted. We store the vote using two booleans: `Aborted`, which is set true by the first participant that aborts the transaction (by calling `Signal_Abort`), and `Should_Commit`, which stores this value until the next round starts.
+Since we do not need to ask the manager if we commit, we can get rid of the `Should_Commit` boolean. And since we reset the `Aborted` boolean in the `Wait_Until_Aborted` entry, it does not need to be changed in the `Finished` entry. Remove the unnecessary code.
 
-The `Transaction_Manager` is a protected object. You can find a quick summary of protected objects [here](http://www.adaic.org/learn/materials/intro/part5/##protect). We are also using one additional feature: The `Count` attribute. We can get the number of tasks blocked on the condition of the `Finished` entry by using `Finished'Count`.
-
- - The exit protocol needs to function as a "gate", letting participants through only when all of them have arrived (`when Finished'Count = N` makes sure no task enters until N of them have arrived). 
- - When the first participant enters, we open the gate for the remaining participants. When the last one enters, the gate is closed (for next round). Use `Finished'Count` (or another counting variable) to see how many participants are waiting to enter.
- - We also need to update and reset the voting variables. When the first participant enters, it can set `Should_Commit`. When the last participant enters, it can reset `Aborted` (this is the reason we store `Should_Commit` as a separate variable).
-
- 
 ###Part 4: Run the program
 
-Verify that you get the expected results: All participants either add 10, or all participants revert.
+Verify that you get the expected results: All participants either add 10, or all participants compensate for failure by adding 5 instead. If an error occurs in any one of the participants, the recovery should happen immediately and asynchronously in all participants (Make sure your delays in the `Unreliable_Slow_Add` function are set such that you can verify this).
 
+##Partial objective: Costfunction
 
-###Questions that will get answers next time (so think about them now, before you encounter any spoilers):
-
-We can have a situation where we have multiple failures in a row, denying any progress from happening. What are the real-time consequences of this?
-
-When one of the participants fails early, all the other participants are doing futile work, yet we cannot do anything but wait until all participants are finished. How can we solve this?
-
-
-##Partial Objective: Network and information security
-Establish a network across multiple computers who are able to communicate with each other, using your choosen topology. Create an interface for the rest of your system. Consider boarderconditions and raceconditions that may occur and present how you solve these. You must present your plans to a studentassistant.
-
-
-
-
-
-
+Create the deciscion system for your elevators. Like in the prevoius weeks you should present your high level design to a student assistant. 
 
 
 
