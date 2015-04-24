@@ -1,19 +1,19 @@
 with Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
 use  Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
 
-procedure exercise7 is
+procedure exercise8 is
 
     Count_Failed    : exception;    -- Exception to be raised when counting fails
     Gen             : Generator;    -- Random number generator
 
     protected type Transaction_Manager (N : Positive) is
         entry Finished;
-        function Commit return Boolean;
+        entry Wait_Until_Aborted;
         procedure Signal_Abort;
     private
         Finished_Gate_Open  : Boolean := False;
         Aborted             : Boolean := False;
-        Should_Commit       : Boolean := True;
+    
     end Transaction_Manager;
     protected body Transaction_Manager is
         entry Finished when Finished_Gate_Open or Finished'Count = N is
@@ -23,7 +23,6 @@ procedure exercise7 is
             ------------------------------------------
             if Finished'Count=N-1 then
                 Finished_Gate_Open:= true;
-                Should_Commit := not Aborted;
             end if;
             if Finished'Count=0 then
                 Finished_Gate_Open:=false;
@@ -36,10 +35,12 @@ procedure exercise7 is
             Aborted := True;
         end Signal_Abort;
 
-        function Commit return Boolean is
+        entry Wait_Until_Aborted when Aborted is
         begin
-            return Should_Commit;
-        end Commit;
+            if Wait_Until_Aborted'Count=0 then
+                Aborted := false;
+            end if;
+        end Wait_Until_Aborted;
         
     end Transaction_Manager;
 
@@ -48,7 +49,7 @@ procedure exercise7 is
     
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
-    Num : integer := 10;
+    Num : integer := 0;
     begin
         -------------------------------------------
         -- PART 1: Create the transaction work here
@@ -59,7 +60,7 @@ procedure exercise7 is
                 Num:=x+10;
             when false =>
                 delay Duration(Random(gen)*0.4);
-                raise Count_Failed;
+                raise Count_Failed; --with "Unreliable_slow_Add_failed"
          end case;
          return Num;
     end Unreliable_Slow_Add;
@@ -82,26 +83,32 @@ procedure exercise7 is
             ---------------------------------------
             -- PART 2: Do the transaction work here             
             ---------------------------------------
-
-            begin
-                Num:=Unreliable_Slow_Add(Prev);
-            exception
-                when Count_Failed=>
-                    Manager.Signal_Abort;
-            end;
+            select
+                Manager.Wait_Until_Aborted;
+                Num:=Prev+5;
+                Put_Line("Worker " &Integer'Image(Initial) & "forward error recovery from" &Integer'Image(Prev) & "  to" & Integer'Image(Num));
+            then abort
+                begin
+                    Num:=Unreliable_Slow_Add(Prev);
+                exception
+                    when Count_Failed=>
+                        Manager.Signal_Abort;
+                end;
+            end select;
             Manager.Finished;
-            
-            if Manager.Commit = True then
-                Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
-            else
-                Put_Line ("  Worker" & Integer'Image(Initial) &
-                             " reverting from" & Integer'Image(Num) &
-                             " to" & Integer'Image(Prev));
+            Put_Line("Worker " &Integer'Image(Initial) & "comitting" & Integer'Image(Num));
+
+            --if Manager.Commit = True then
+            --    Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
+            --else
+            --    Put_Line ("  Worker" & Integer'Image(Initial) &
+            --                 " reverting from" & Integer'Image(Num) &
+            --                 " to" & Integer'Image(Prev));
                 -------------------------------------------
                 -- PART 2: Roll back to previous value here
                 -------------------------------------------
-                Num := Prev;
-            end if;
+            --    Num := Prev;
+            --end if;
 
             Prev := Num;
             delay 0.5;
@@ -117,7 +124,7 @@ procedure exercise7 is
 
 begin
     Reset(Gen); -- Seed the random number generator
-end exercise7;
+end exercise8;
 
 
 
